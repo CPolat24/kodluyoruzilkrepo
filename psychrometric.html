@@ -1051,6 +1051,14 @@
         let actions = [];
         let selectedPointIndex = -1;
         let previewValues = null; // canlı önizleme noktası
+        let _redrawScheduled = false;
+        function scheduleRedraw() {
+            if (_redrawScheduled) return;
+            _redrawScheduled = true;
+            setTimeout(() => {
+                try { drawPsychrometricChart(); } finally { _redrawScheduled = false; }
+            }, 120);
+        }
 
         // Parameter definitions
         const parameterDefinitions = {
@@ -1646,7 +1654,7 @@
                 // gamma ≈ 0.00066 * (1 + 0.00115 * Twb)
                 const PkPa = pressure / 1000.0;
                 const gamma = 0.00066 * (1 + 0.00115 * wbTemp);
-                for (let temp = Math.max(wbTemp, -40); temp <= 65; temp += 0.5) {
+                for (let temp = Math.max(wbTemp, -40); temp <= 65; temp += 1.0) {
                     try {
                         const p_ws_wb_kPa = calculateSaturationVaporPressure(wbTemp) / 1000.0;
                         let p_w_kPa = p_ws_wb_kPa - gamma * PkPa * (temp - wbTemp);
@@ -1683,7 +1691,7 @@
             const enthalpyValues = Array.from({length: ((180 - (-20)) / 10) + 1}, (_, i) => -20 + i * 10);
             enthalpyValues.forEach((enthalpy, index) => {
                 const data = [];
-                for (let temp = -40; temp <= 65; temp += 0.5) {
+                for (let temp = -40; temp <= 65; temp += 1.0) {
                     try {
                         const humidityRatio = (enthalpy - 1.006 * temp) / (2501 + 1.86 * temp);
                         // cap against saturation at T
@@ -1719,7 +1727,7 @@
             const volumeValues = Array.from({length: ((1.02 - 0.76) / 0.02) + 1}, (_, i) => Number((0.76 + i * 0.02).toFixed(3)));
             volumeValues.forEach((volume, index) => {
                 const data = [];
-                for (let temp = -40; temp <= 65; temp += 0.5) {
+                for (let temp = -40; temp <= 65; temp += 1.0) {
                     try {
                         const T_K = temp + 273.15;
                         const R_DA = 287.042; // J/kg·K
@@ -1815,22 +1823,30 @@
                         if (!isRH && !isWB) return;
                         const points = ds.data;
                         if (!points || points.length === 0) return;
-                        const first = points[0];
-                        let x = scales.x.getPixelForValue(first.x);
-                        let y = scales.y.getPixelForValue(first.y);
-                        const leftPad = 10;
-                        const leftBound = scales.x.left + leftPad;
-                        x = Math.max(x - 22, leftBound);
                         ctx.textBaseline = 'middle';
                         if (isRH) {
+                            // place at right end (old behavior), with right offset to avoid y-axis
+                            const last = points[points.length - 1];
+                            let x = scales.x.getPixelForValue(last.x);
+                            let y = scales.y.getPixelForValue(last.y);
+                            const rightPad = 40;
+                            const rightBound = scales.x.right - rightPad;
+                            x = Math.min(x, rightBound);
                             const rhVal = parseInt(ds.label.replace('%','')) || 0;
-                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -12 : -18;
+                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -10 : 10;
                             y = y + yOffset;
                             ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
                             ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
                             ctx.fillText(ds.label, x, y);
                             rhIndex++;
                         } else if (isWB) {
+                            // place at left, stagger to avoid overlap with RH
+                            const first = points[0];
+                            let x = scales.x.getPixelForValue(first.x);
+                            let y = scales.y.getPixelForValue(first.y);
+                            const leftPad = 10;
+                            const leftBound = scales.x.left + leftPad;
+                            x = Math.max(x - 18, leftBound);
                             const yOffset = (wbIndex % 2 === 0) ? -10 : -6;
                             y = y + yOffset;
                             ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#3fa9f5';
