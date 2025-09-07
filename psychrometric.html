@@ -1164,32 +1164,70 @@
         }
 
         function calculateDewPointTemperature(humidityRatio, pressure = 101325) {
-            const p_w = humidityRatio * pressure / (0.62198 + humidityRatio);
-            
-            if (p_w > 611.21) {
-                const a = 18.678;
-                const b = 234.5;
-                const c = 257.14;
-                return c * Math.log(p_w / 611.21) / (a - Math.log(p_w / 611.21)) - b;
-            } else {
-                const a = 23.036;
-                const b = 333.7;
-                const c = 279.82;
-                return c * Math.log(p_w / 611.21) / (a - Math.log(p_w / 611.21)) - b;
+            // Compute vapor pressure from humidity ratio
+            const p_w = humidityRatio * pressure / (0.62198 + humidityRatio); // Pa
+            // Invert saturation vapor pressure numerically (robust over wide range)
+            let low = -80.0;
+            let high = 80.0;
+            for (let i = 0; i < 50; i++) {
+                const mid = 0.5 * (low + high);
+                const p_mid = calculateSaturationVaporPressure(mid);
+                if (p_mid > p_w) {
+                    high = mid;
+                } else {
+                    low = mid;
+                }
             }
+            return 0.5 * (low + high);
+        }
+
+        function saturationHumidityRatio(tempC, pressure = 101325) {
+            const p_ws = calculateSaturationVaporPressure(tempC); // Pa
+            const denom = Math.max(pressure - p_ws, 1); // avoid division by zero
+            return 0.62198 * p_ws / denom;
         }
 
         function calculateWetBulbTemperature(dryBulbTemp, humidityRatio, pressure = 101325) {
-            // Simplified approximation
-            const p_ws = calculateSaturationVaporPressure(dryBulbTemp);
-            const p_w = humidityRatio * pressure / (0.62198 + humidityRatio);
-            const relativeHumidity = (p_w / p_ws) * 100;
-            
-            // Empirical approximation
-            return dryBulbTemp * Math.atan(0.151977 * Math.sqrt(relativeHumidity + 8.313659)) + 
-                   Math.atan(dryBulbTemp + relativeHumidity) - 
-                   Math.atan(relativeHumidity - 1.676331) + 
-                   0.00391838 * Math.pow(relativeHumidity, 1.5) * Math.atan(0.023101 * relativeHumidity) - 4.686035;
+            // Thermodynamic wet-bulb via enthalpy equality: h(Tdb,W) = h(Twb, Ws(Twb))
+            const h_air = calculateEnthalpy(dryBulbTemp, humidityRatio); // J/kg dry air
+            let low = -80.0;
+            let high = dryBulbTemp;
+            // Ensure function changes sign over bracket
+            function f(Twb) {
+                const Ws = saturationHumidityRatio(Twb, pressure);
+                const h_sat = calculateEnthalpy(Twb, Ws);
+                return h_air - h_sat; // zero when equal
+            }
+            let f_low = f(low);
+            let f_high = f(high);
+            if (f_low * f_high > 0) {
+                // Fallback: expand lower bound
+                low = -100.0;
+                f_low = f(low);
+                if (f_low * f_high > 0) {
+                    // As a last resort, return empirical approx but this should rarely happen
+                    const p_ws = calculateSaturationVaporPressure(dryBulbTemp);
+                    const p_w = humidityRatio * pressure / (0.62198 + humidityRatio);
+                    const RH = Math.max(0, Math.min(100, (p_w / p_ws) * 100));
+                    return dryBulbTemp * Math.atan(0.151977 * Math.sqrt(RH + 8.313659)) +
+                           Math.atan(dryBulbTemp + RH) -
+                           Math.atan(RH - 1.676331) +
+                           0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) - 4.686035;
+                }
+            }
+            for (let i = 0; i < 60; i++) {
+                const mid = 0.5 * (low + high);
+                const f_mid = f(mid);
+                if (f_mid === 0) return mid;
+                if (f_low * f_mid < 0) {
+                    high = mid;
+                    f_high = f_mid;
+                } else {
+                    low = mid;
+                    f_low = f_mid;
+                }
+            }
+            return 0.5 * (low + high);
         }
 
         function calculateEnthalpy(temperature, humidityRatio) {
