@@ -1825,35 +1825,22 @@
                         if (!points || points.length === 0) return;
                         ctx.textBaseline = 'middle';
                         if (isRH) {
-                            // numeric-only RH labels, placed near curve end with explicit nudges
-                            const last = points[points.length - 1];
-                            let xEnd = scales.x.getPixelForValue(last.x);
-                            let yEnd = scales.y.getPixelForValue(last.y);
+                            // numeric-only RH labels centered on the curve (no %)
+                            // pick a middle point to avoid axis and place directly over the line
+                            const idx = Math.floor(points.length * 0.65); // a bit right of center
+                            const pt = points[Math.min(Math.max(idx, 0), points.length - 1)];
+                            let x = scales.x.getPixelForValue(pt.x);
+                            let y = scales.y.getPixelForValue(pt.y);
                             const rhVal = parseInt(ds.label.replace('%','')) || 0;
                             const labelText = String(rhVal);
-                            let xNudge = 0, yNudge = 0;
-                            // requested offsets
-                            if (rhVal === 20) { xNudge -= 3; }
-                            if (rhVal === 30) { xNudge += 2; }
-                            if (rhVal === 40) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 50) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 60) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 70) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 80) { yNudge -= 4; }
-                            if (rhVal === 90) { yNudge -= 4; }
-                            if (rhVal === 100) { yNudge -= 5; xNudge -= 3; }
-                            // default small stagger for others
-                            if (![20,30,40,50,60,70,80,90,100].includes(rhVal)) {
-                                yNudge += (Math.floor(rhVal / 20) % 2 === 0) ? -6 : 6;
-                            }
-                            let x = xEnd + xNudge;
-                            let y = yEnd + yNudge;
-                            const rightPad = 12, leftPad = 6;
-                            const rightBound = scales.x.right - rightPad;
-                            const leftBound = scales.x.left + leftPad;
-                            x = Math.max(leftBound, Math.min(x, rightBound));
+                            // small per-value nudges if needed
+                            if (rhVal === 20) x -= 3;
+                            if (rhVal === 40 || rhVal === 50 || rhVal === 60 || rhVal === 70) { x += 2; y -= 4; }
+                            if (rhVal === 80 || rhVal === 90) { y -= 4; }
+                            if (rhVal === 100) { x -= 3; y -= 5; }
                             ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
                             ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
+                            ctx.textBaseline = 'middle';
                             ctx.fillText(labelText, x, y);
                             rhIndex++;
                         } else if (isWB) {
