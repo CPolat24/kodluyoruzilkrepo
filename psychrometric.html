@@ -1840,6 +1840,7 @@
                     },
                     scales: {
                         x: {
+                            type: 'linear',
                             title: {
                                 display: true,
                                 text: 'Kuru Termometre Sıcaklığı (°C)',
@@ -1861,12 +1862,12 @@
                                 font: {
                                     size: 12
                                 },
-                                stepSize: 5,
+                                stepSize: 10,
                                 display: true,
                                 callback: function(value) {
                                     return value + '°C';
                                 },
-                                maxTicksLimit: 15
+                                autoSkip: false
                             }
                         },
                         y: {
@@ -1897,7 +1898,8 @@
                                     return value + ' g/kg';
                                 },
                                 maxTicksLimit: 16
-                            }
+                            },
+                            position: 'right'
                         }
                     },
                     interaction: {
