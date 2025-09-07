@@ -1826,19 +1826,20 @@
                         if (!points || points.length === 0) return;
                         ctx.textBaseline = 'middle';
                         if (isRH) {
-                            // numeric-only RH labels centered on the curve (no %)
-                            // pick a middle point to avoid axis and place directly over the line
-                            const idx = Math.floor(points.length * 0.65); // a bit right of center
-                            const pt = points[Math.min(Math.max(idx, 0), points.length - 1)];
-                            let x = scales.x.getPixelForValue(pt.x);
-                            let y = scales.y.getPixelForValue(pt.y);
+                            // numeric-only RH labels at curve end (right side)
+                            const last = points[points.length - 1];
+                            let x = scales.x.getPixelForValue(last.x);
+                            let y = scales.y.getPixelForValue(last.y);
                             const rhVal = parseInt(ds.label.replace('%','')) || 0;
                             const labelText = String(rhVal);
-                            // small per-value nudges if needed
+                            // small per-value nudges
                             if (rhVal === 20) x -= 3;
                             if (rhVal === 40 || rhVal === 50 || rhVal === 60 || rhVal === 70) { x += 2; y -= 4; }
                             if (rhVal === 80 || rhVal === 90) { y -= 4; }
                             if (rhVal === 100) { x -= 3; y -= 5; }
+                            // keep away from right axis
+                            const rightPad = 12;
+                            x = Math.min(x, scales.x.right - rightPad);
                             ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
                             ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
                             ctx.textBaseline = 'middle';
