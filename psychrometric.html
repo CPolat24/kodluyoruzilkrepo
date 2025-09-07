@@ -278,7 +278,7 @@
 
         .chart-container {
             position: relative;
-            height: 500px;
+            height: 600px;
             background: white;
             border-radius: 10px;
             padding: 20px;
@@ -639,8 +639,8 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-top: 20px;
             position: relative;
-            height: 500px;
-            min-height: 500px;
+            height: 600px;
+            min-height: 600px;
         }
 
         .chart-title {
@@ -923,6 +923,15 @@
                             </button>
                         </div>
                     </div>
+                    <div class="panel-section">
+                        <h3>
+                            <i class="fas fa-calculator"></i>
+                            Hesaplama Formülleri
+                        </h3>
+                        <div id="formulaDisplay" class="formula-display">
+                            <p>Hesaplama yapmak için parametreleri girin</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Panel - Chart and Results -->
@@ -994,16 +1003,6 @@
                         <canvas id="psychrometricChart"></canvas>
                     </div>
 
-                    <!-- Formula Section -->
-                    <div class="panel-section" style="margin-top: 20px;">
-                        <h3>
-                            <i class="fas fa-calculator"></i>
-                            Hesaplama Formülleri
-                        </h3>
-                        <div id="formulaDisplay" class="formula-display">
-                            <p>Hesaplama yapmak için parametreleri girin</p>
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -1791,11 +1790,34 @@
             // compute y-axis max (round to next 5, clamp to 100 g/kg)
             const computedYMax = Math.min(100, Math.max(25, Math.ceil(maxY / 5) * 5));
 
+            const rhLabelPlugin = {
+                id: 'rhLabelPlugin',
+                afterDatasetsDraw(chart, args, pluginOptions) {
+                    const { ctx, scales } = chart;
+                    ctx.save();
+                    chart.data.datasets.forEach(ds => {
+                        if (!ds || ds.hidden) return;
+                        if (!ds.label || !ds.label.includes('%')) return;
+                        const points = ds.data;
+                        if (!points || points.length === 0) return;
+                        const last = points[points.length - 1];
+                        const x = scales.x.getPixelForValue(last.x);
+                        const y = scales.y.getPixelForValue(last.y);
+                        ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
+                        ctx.font = '12px Inter, sans-serif';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(ds.label, x + 6, y);
+                    });
+                    ctx.restore();
+                }
+            };
+
             window.psychrometricChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: datasets
                 },
+                plugins: [rhLabelPlugin],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1862,7 +1884,7 @@
                                 font: {
                                     size: 12
                                 },
-                                stepSize: 10,
+                                stepSize: 2,
                                 display: true,
                                 callback: function(value) {
                                     return value + '°C';
@@ -1892,7 +1914,7 @@
                                 font: {
                                     size: 12
                                 },
-                                stepSize: 2,
+                                stepSize: 5,
                                 display: true,
                                 callback: function(value) {
                                     return value + ' g/kg';
