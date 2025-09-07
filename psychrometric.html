@@ -923,15 +923,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="panel-section">
-                        <h3>
-                            <i class="fas fa-calculator"></i>
-                            Hesaplama Formülleri
-                        </h3>
-                        <div id="formulaDisplay" class="formula-display">
-                            <p>Hesaplama yapmak için parametreleri girin</p>
-                        </div>
-                    </div>
+                    
                 </div>
 
                 <!-- Right Panel - Chart and Results -->
@@ -1001,6 +993,17 @@
                     <div class="chart-container">
                         <div class="chart-title">Psikrometrik Diyagram</div>
                         <canvas id="psychrometricChart"></canvas>
+                    </div>
+                    
+                    <!-- Formula Section (moved back under chart) -->
+                    <div class="panel-section" style="margin-top: 20px;">
+                        <h3>
+                            <i class="fas fa-calculator"></i>
+                            Hesaplama Formülleri
+                        </h3>
+                        <div id="formulaDisplay" class="formula-display">
+                            <p>Hesaplama yapmak için parametreleri girin</p>
+                        </div>
                     </div>
 
                 </div>
@@ -1589,7 +1592,7 @@
             const pressure = calculateAtmosphericPressure(altitude);
             
             const datasets = [];
-            let maxY = 25; // g/kg
+            let maxY = 60; // g/kg upper target
             
             // 1. Relative Humidity Curves (Bağıl Nem Eğrileri) - Professional red curves
             const rhValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
@@ -1603,7 +1606,7 @@
                 for (let temp = 0; temp <= 50; temp += 1) {
                     try {
                         const humidityRatio = calculateHumidityRatioFromRH(temp, rh, pressure);
-                        if (humidityRatio > 0 && humidityRatio < 0.03) {
+                        if (humidityRatio > 0 && humidityRatio < 0.06) {
                             data.push({
                                 x: temp,
                                 y: humidityRatio * 1000 // Convert to g/kg
@@ -1644,7 +1647,7 @@
                         const p_w = p_ws; // At saturation
                         const humidityRatio = 0.62198 * p_w / (pressure - p_w);
                         
-                        if (humidityRatio > 0 && humidityRatio < 0.03) {
+                        if (humidityRatio > 0 && humidityRatio < 0.06) {
                             data.push({
                                 x: temp,
                                 y: humidityRatio * 1000
@@ -1680,7 +1683,7 @@
                 for (let temp = -10; temp <= 50; temp += 0.2) {
                     try {
                         const humidityRatio = (enthalpy - 1.006 * temp) / (2501 + 1.86 * temp);
-                        if (humidityRatio > 0 && humidityRatio < 0.03) {
+                        if (humidityRatio > 0 && humidityRatio < 0.06) {
                             data.push({
                                 x: temp,
                                 y: humidityRatio * 1000
@@ -1716,7 +1719,7 @@
                 for (let temp = -10; temp <= 50; temp += 0.2) {
                     try {
                         const humidityRatio = (1.0 / volume - 1.0) / (0.287 * (temp + 273.15) / pressure);
-                        if (humidityRatio > 0 && humidityRatio < 0.03) {
+                        if (humidityRatio > 0 && humidityRatio < 0.06) {
                             data.push({
                                 x: temp,
                                 y: humidityRatio * 1000
@@ -1787,8 +1790,8 @@
             console.log(`Creating chart with ${datasets.length} datasets`);
             console.log('Sample RH data:', datasets.filter(d => d.label && d.label.includes('%')).map(d => ({label: d.label, points: d.data.length})));
             
-            // compute y-axis max (round to next 5, clamp to 100 g/kg)
-            const computedYMax = Math.min(100, Math.max(25, Math.ceil(maxY / 5) * 5));
+            // compute y-axis max (force 60 g/kg for requested range)
+            const computedYMax = 60;
 
             const rhLabelPlugin = {
                 id: 'rhLabelPlugin',
