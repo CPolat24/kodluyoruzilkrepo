@@ -1048,6 +1048,7 @@
         let points = [];
         let actions = [];
         let selectedPointIndex = -1;
+        let previewValues = null; // canlı önizleme noktası
 
         // Parameter definitions
         const parameterDefinitions = {
@@ -1589,6 +1590,7 @@
             const pressure = calculateAtmosphericPressure(altitude);
             
             const datasets = [];
+            let maxY = 25; // g/kg
             
             // 1. Relative Humidity Curves (Bağıl Nem Eğrileri) - Professional red curves
             const rhValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
@@ -1627,6 +1629,9 @@
                         fill: false,
                         hidden: false
                     });
+                    // track max y
+                    const localMax = Math.max.apply(null, data.map(p => p.y));
+                    if (!isNaN(localMax)) maxY = Math.max(maxY, localMax);
                 }
             });
             
@@ -1664,6 +1669,8 @@
                         borderDash: [5, 5],
                         hidden: true
                     });
+                    const localMax = Math.max.apply(null, data.map(p => p.y));
+                    if (!isNaN(localMax)) maxY = Math.max(maxY, localMax);
                 }
             });
             
@@ -1698,6 +1705,8 @@
                         borderDash: [3, 3],
                         hidden: true
                     });
+                    const localMax = Math.max.apply(null, data.map(p => p.y));
+                    if (!isNaN(localMax)) maxY = Math.max(maxY, localMax);
                 }
             });
             
@@ -1732,17 +1741,20 @@
                         borderDash: [2, 2],
                         hidden: true
                     });
+                    const localMax = Math.max.apply(null, data.map(p => p.y));
+                    if (!isNaN(localMax)) maxY = Math.max(maxY, localMax);
                 }
             });
             
             // 5. Add user points (only these will be visible by default)
             if (typeof points !== 'undefined' && points.length > 0) {
                 points.forEach((point, index) => {
+                    const yVal = point.humidityRatio * 1000;
                     datasets.push({
                         label: point.name,
                         data: [{
                             x: point.dryBulbTemp,
-                            y: point.humidityRatio * 1000
+                            y: yVal
                         }],
                         borderColor: index === selectedPointIndex ? '#FF0000' : '#00AA00',
                         backgroundColor: index === selectedPointIndex ? '#FF0000' : '#00AA00',
@@ -1752,12 +1764,33 @@
                         pointStyle: 'circle',
                         _isUserPoint: true
                     });
+                    if (!isNaN(yVal)) maxY = Math.max(maxY, yVal);
                 });
+            }
+
+            // 6. Add live preview point
+            if (previewValues && !isNaN(previewValues.dryBulbTemp) && !isNaN(previewValues.humidityRatio)) {
+                const yPreview = previewValues.humidityRatio * 1000;
+                datasets.push({
+                    label: 'Aktif Nokta',
+                    data: [{ x: previewValues.dryBulbTemp, y: yPreview }],
+                    borderColor: '#FF5722',
+                    backgroundColor: '#FF5722',
+                    borderWidth: 0,
+                    pointRadius: 9,
+                    showLine: false,
+                    pointStyle: 'circle',
+                    _isPreviewPoint: true
+                });
+                if (!isNaN(yPreview)) maxY = Math.max(maxY, yPreview);
             }
             
             console.log(`Creating chart with ${datasets.length} datasets`);
             console.log('Sample RH data:', datasets.filter(d => d.label && d.label.includes('%')).map(d => ({label: d.label, points: d.data.length})));
             
+            // compute y-axis max (round to next 5, clamp to 100 g/kg)
+            const computedYMax = Math.min(100, Math.max(25, Math.ceil(maxY / 5) * 5));
+
             window.psychrometricChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1847,7 +1880,7 @@
                                 }
                             },
                             min: 0,
-                            max: 25,
+                            max: computedYMax,
                             grid: {
                                 color: document.body.classList.contains('dark-mode') ? '#475569' : '#e2e8f0',
                                 lineWidth: 1,
@@ -1978,9 +2011,16 @@
                             displayResults(calculatedValues);
                             showFormulas(calculatedValues, inputType1, inputValue1, inputType2, inputValue2);
                             hideError();
+                            // update preview and redraw
+                            previewValues = calculatedValues;
+                            drawPsychrometricChart();
                         } catch (error) {
                             // Don't show error for incomplete inputs
                         }
+                    } else {
+                        // Clear preview when inputs incomplete or conflicting
+                        previewValues = null;
+                        drawPsychrometricChart();
                     }
                 });
             });
