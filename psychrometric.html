@@ -1238,10 +1238,11 @@
         }
 
         function calculateEnthalpy(temperature, humidityRatio) {
+            // Temperature-dependent latent heat improves accuracy: h_fg(T) ≈ 2501000 - 2369*T (J/kg)
             const CP_DA = 1006; // J/kg·K
-            const CP_W = 1805;  // J/kg·K
-            const H_FG = 2501000; // J/kg
-            return CP_DA * temperature + humidityRatio * (H_FG + CP_W * temperature);
+            const CP_W_V = 1860;  // J/kg·K (water vapor)
+            const H_FG_T = 2501000 - 2369 * temperature; // J/kg
+            return CP_DA * temperature + humidityRatio * (H_FG_T + CP_W_V * temperature);
         }
 
         function calculateSpecificVolume(temperature, humidityRatio, pressure = 101325) {
