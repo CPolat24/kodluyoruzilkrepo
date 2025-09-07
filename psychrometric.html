@@ -1843,6 +1843,7 @@
                             const labelText = String(rhVal);
                             let mag = 0;
                             let xNudge = 0, yNudge = 0;
+                            if (rhVal === 20) { xNudge -= 3; }
                             if (rhVal === 30) { xNudge += 2; }
                             if (rhVal === 40) { xNudge += 2; yNudge -= 4; }
                             if (rhVal === 50) { xNudge += 2; yNudge -= 4; }
@@ -1850,7 +1851,7 @@
                             if (rhVal === 70) { xNudge += 2; yNudge -= 4; }
                             if (rhVal === 80) { yNudge -= 4; }
                             if (rhVal === 90) { yNudge -= 4; }
-                            if (rhVal === 100) { yNudge -= 5; }
+                            if (rhVal === 100) { xNudge -= 3; yNudge -= 5; }
                             if (![30,40,50,60,70,80,90,100].includes(rhVal)) {
                                 yNudge += (Math.floor(rhVal / 20) % 2 === 0) ? -8 : 8;
                             }
