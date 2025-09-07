@@ -1680,7 +1680,7 @@
             });
             
             // 3. Enthalpy Lines (Entalpi Eğrileri) - Green diagonal lines
-            const enthalpyValues = [-20, -10, 0, 20, 40, 60, 80, 100, 120, 140, 160, 180];
+            const enthalpyValues = Array.from({length: ((180 - (-20)) / 10) + 1}, (_, i) => -20 + i * 10);
             enthalpyValues.forEach((enthalpy, index) => {
                 const data = [];
                 for (let temp = -40; temp <= 65; temp += 0.5) {
@@ -1716,7 +1716,7 @@
             });
             
             // 4. Specific Volume Lines (Özgül Hacim Eğrileri) - Purple lines
-            const volumeValues = [0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
+            const volumeValues = Array.from({length: ((1.02 - 0.76) / 0.02) + 1}, (_, i) => Number((0.76 + i * 0.02).toFixed(3)));
             volumeValues.forEach((volume, index) => {
                 const data = [];
                 for (let temp = -40; temp <= 65; temp += 0.5) {
@@ -1814,16 +1814,17 @@
                         // place label slightly left of the right border to avoid y-axis overlap
                         let x = scales.x.getPixelForValue(last.x);
                         let y = scales.y.getPixelForValue(last.y);
-                        const rightPad = 28;
+                        const rightPad = 42;
                         const leftBound = scales.x.left + 6;
                         const rightBound = scales.x.right - rightPad;
                         x = Math.min(x, rightBound);
-                        x = Math.max(x - 16, leftBound);
-                        // stagger to reduce collisions
-                        const yOffset = (rhIndex % 2 === 0) ? -8 : 8;
+                        x = Math.max(x - 22, leftBound);
+                        // stagger based on RH value to reduce collisions (alternating every 20%)
+                        const rhVal = parseInt(ds.label.replace('%','')) || 0;
+                        const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -10 : 10;
                         y = y + yOffset;
                         ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
-                        ctx.font = '11px Inter, sans-serif';
+                        ctx.font = '12px Inter, sans-serif';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(ds.label, x, y);
                         rhIndex++;
