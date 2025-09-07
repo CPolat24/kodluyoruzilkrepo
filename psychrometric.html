@@ -1805,29 +1805,50 @@
                     const { ctx, scales } = chart;
                     ctx.save();
                     let rhIndex = 0;
+                    let hIndex = 0;
+                    let vIndex = 0;
                     chart.data.datasets.forEach(ds => {
                         if (!ds || ds.hidden) return;
-                        if (!ds.label || !ds.label.includes('%')) return;
+                        if (!ds.label) return;
                         const points = ds.data;
                         if (!points || points.length === 0) return;
                         const last = points[points.length - 1];
-                        // place label slightly left of the right border to avoid y-axis overlap
                         let x = scales.x.getPixelForValue(last.x);
                         let y = scales.y.getPixelForValue(last.y);
-                        const rightPad = 42;
+                        const rightPad = 46;
                         const leftBound = scales.x.left + 6;
                         const rightBound = scales.x.right - rightPad;
                         x = Math.min(x, rightBound);
                         x = Math.max(x - 22, leftBound);
-                        // stagger based on RH value to reduce collisions (alternating every 20%)
-                        const rhVal = parseInt(ds.label.replace('%','')) || 0;
-                        const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -10 : 10;
-                        y = y + yOffset;
-                        ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
-                        ctx.font = '12px Inter, sans-serif';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(ds.label, x, y);
-                        rhIndex++;
+                        if (ds.label.includes('%')) {
+                            // RH label
+                            const rhVal = parseInt(ds.label.replace('%','')) || 0;
+                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -12 : 12;
+                            y = y + yOffset;
+                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
+                            ctx.font = '12px Inter, sans-serif';
+                            ctx.fillText(ds.label, x, y);
+                            rhIndex++;
+                        } else if (ds.label.includes('kJ/kg')) {
+                            // Enthalpy label, short form: h 80
+                            const hVal = parseInt(ds.label) || 0;
+                            const yOffset = (hIndex % 3 === 0) ? -10 : (hIndex % 3 === 1 ? 0 : 10);
+                            y = y + yOffset;
+                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#228B22';
+                            ctx.font = '11px Inter, sans-serif';
+                            ctx.fillText(`h ${hVal}`, x, y);
+                            hIndex++;
+                        } else if (ds.label.includes('m³/kg')) {
+                            // Specific volume label, short form: v 0.98
+                            const vVal = (parseFloat(ds.label) || 0).toFixed(2);
+                            const yOffset = (vIndex % 2 === 0) ? -8 : 8;
+                            y = y + yOffset;
+                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#8A2BE2';
+                            ctx.font = '11px Inter, sans-serif';
+                            ctx.fillText(`v ${vVal}`, x, y);
+                            vIndex++;
+                        }
                     });
                     ctx.restore();
                 }
