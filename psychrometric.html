@@ -1639,7 +1639,7 @@
             });
             
             // 2. Wet-Bulb Temperature Lines (Yaş Termometre Eğrileri) using psychrometric equation
-            const wetBulbValues = [-20, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40];
+            const wetBulbValues = [-10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 40];
             wetBulbValues.forEach((wbTemp, index) => {
                 const data = [];
                 // Use p_w = p_ws(Twb) - gamma * P * (Tdb - Twb)
@@ -1680,7 +1680,7 @@
             });
             
             // 3. Enthalpy Lines (Entalpi Eğrileri) - Green diagonal lines
-            const enthalpyValues = [-20, 0, 20, 40, 60, 80, 100, 120, 140, 160, 180];
+            const enthalpyValues = [-20, -10, 0, 20, 40, 60, 80, 100, 120, 140, 160, 180];
             enthalpyValues.forEach((enthalpy, index) => {
                 const data = [];
                 for (let temp = -40; temp <= 65; temp += 0.5) {
@@ -1721,12 +1721,15 @@
                 const data = [];
                 for (let temp = -40; temp <= 65; temp += 0.5) {
                     try {
-                        const humidityRatio = (1.0 / volume - 1.0) / (0.287 * (temp + 273.15) / pressure);
+                        const T_K = temp + 273.15;
+                        const R_DA = 287.042; // J/kg·K
+                        // v (m^3/kg dry air) constant line: v = R_DA*T*(1+1.6078W)/p  =>  W = (v*p/(R_DA*T) - 1)/1.6078
+                        const W_line = (volume * pressure / (R_DA * T_K) - 1.0) / 1.6078;
                         // cap against saturation at T
                         const p_ws_t = calculateSaturationVaporPressure(temp);
                         const W_s = 0.62198 * (p_ws_t) / (pressure - p_ws_t);
-                        if (humidityRatio > 0 && humidityRatio < 0.06 && humidityRatio <= W_s) {
-                            data.push({ x: temp, y: humidityRatio * 1000 });
+                        if (W_line > 0 && W_line < 0.06 && W_line <= W_s) {
+                            data.push({ x: temp, y: W_line * 1000 });
                         }
                     } catch (e) {
                         // Skip invalid points
@@ -1801,18 +1804,29 @@
                 afterDatasetsDraw(chart, args, pluginOptions) {
                     const { ctx, scales } = chart;
                     ctx.save();
+                    let rhIndex = 0;
                     chart.data.datasets.forEach(ds => {
                         if (!ds || ds.hidden) return;
                         if (!ds.label || !ds.label.includes('%')) return;
                         const points = ds.data;
                         if (!points || points.length === 0) return;
                         const last = points[points.length - 1];
-                        const x = scales.x.getPixelForValue(last.x);
-                        const y = scales.y.getPixelForValue(last.y);
+                        // place label slightly left of the right border to avoid y-axis overlap
+                        let x = scales.x.getPixelForValue(last.x);
+                        let y = scales.y.getPixelForValue(last.y);
+                        const rightPad = 28;
+                        const leftBound = scales.x.left + 6;
+                        const rightBound = scales.x.right - rightPad;
+                        x = Math.min(x, rightBound);
+                        x = Math.max(x - 16, leftBound);
+                        // stagger to reduce collisions
+                        const yOffset = (rhIndex % 2 === 0) ? -8 : 8;
+                        y = y + yOffset;
                         ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
-                        ctx.font = '12px Inter, sans-serif';
+                        ctx.font = '11px Inter, sans-serif';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(ds.label, x + 6, y);
+                        ctx.fillText(ds.label, x, y);
+                        rhIndex++;
                     });
                     ctx.restore();
                 }
