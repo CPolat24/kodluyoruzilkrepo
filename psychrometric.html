@@ -1808,62 +1808,46 @@
             // compute y-axis max (force 60 g/kg for requested range)
             const computedYMax = 60;
 
-            const rhLabelPlugin = {
-                id: 'rhLabelPlugin',
-                afterDatasetsDraw(chart) {
-                    const { ctx, scales } = chart;
-                    ctx.save();
-                    let rhIndex = 0;
-                    let wbIndex = 0;
-                    const isMobile = window.innerWidth < 768;
-                    chart.data.datasets.forEach(ds => {
-                        if (!ds || ds.hidden) return;
-                        if (!ds.label) return;
-                        const isRH = !!ds._isRH;
-                        const isWB = ds.label.includes('°C') && !ds._isUserPoint;
-                        if (!isRH && !isWB) return;
-                        const points = ds.data;
-                        if (!points || points.length === 0) return;
-                        ctx.textBaseline = 'middle';
-                        if (isRH) {
-                            // numeric-only RH labels at curve end (right side)
-                            const last = points[points.length - 1];
-                            let x = scales.x.getPixelForValue(last.x);
-                            let y = scales.y.getPixelForValue(last.y);
-                            const rhVal = parseInt(ds.label.replace('%','')) || 0;
-                            const labelText = String(rhVal);
-                            // small per-value nudges
-                            if (rhVal === 20) x -= 3;
-                            if (rhVal === 40 || rhVal === 50 || rhVal === 60 || rhVal === 70) { x += 2; y -= 4; }
-                            if (rhVal === 80 || rhVal === 90) { y -= 4; }
-                            if (rhVal === 100) { x -= 3; y -= 5; }
-                            // keep away from right axis
-                            const rightPad = 12;
-                            x = Math.min(x, scales.x.right - rightPad);
-                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
-                            ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(labelText, x, y);
-                            rhIndex++;
-                        } else if (isWB) {
-                            // place at left, stagger to avoid overlap with RH
-                            const first = points[0];
-                            let x = scales.x.getPixelForValue(first.x);
-                            let y = scales.y.getPixelForValue(first.y);
-                            const leftPad = 10;
-                            const leftBound = scales.x.left + leftPad;
-                            x = Math.max(x - 18, leftBound);
-                            const yOffset = (wbIndex % 2 === 0) ? -10 : -6;
-                            y = y + yOffset;
-                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#3fa9f5';
-                            ctx.font = (isMobile ? '9px' : '11px') + ' Inter, sans-serif';
-                            ctx.fillText(ds.label, x, y);
-                            wbIndex++;
-                        }
-                    });
-                    ctx.restore();
-                }
-            };
+            
+
+
+const rhLabelPlugin = {
+    id: 'rhLabelPlugin',
+    afterDatasetsDraw(chart) {
+        const { ctx, scales } = chart;
+        ctx.save();
+        chart.data.datasets.forEach(ds => {
+            if (!ds || ds.hidden || !ds._isRH) return;
+            const points = ds.data;
+            if (!points || points.length === 0) return;
+
+            const last = points[points.length - 1];
+            let x = scales.x.getPixelForValue(last.x);
+            let y = scales.y.getPixelForValue(last.y);
+
+            const rhVal = parseInt(ds.label.replace('%','')) || 0;
+            const labelText = `${rhVal}`;
+
+            // tüm etiketler biraz yukarı
+            y -= 8;
+
+            // 80 ve 90 için ekstra yukarı kaydırma
+            if (rhVal === 90)  { y -= 4; }
+            if (rhVal === 80)  { y -= 6; }
+
+            ctx.fillStyle = typeof ds.borderColor === 'string'
+                ? ds.borderColor
+                : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(labelText, x, y);
+        });
+        ctx.restore();
+    }
+};
+
+
 
             const isMobile = window.innerWidth < 768;
             window.psychrometricChartInstance = new Chart(ctx, {
