@@ -1841,7 +1841,7 @@
                             if (ny > 0) { nx = -nx; ny = -ny; } // ensure up
                             const rhVal = parseInt(ds.label.replace('%','')) || 0;
                             const labelText = String(rhVal);
-                            let mag = 8;
+                            let mag = 0;
                             let xNudge = 0, yNudge = 0;
                             if (rhVal === 30) { xNudge += 2; }
                             if (rhVal === 40) { xNudge += 2; }
@@ -1856,7 +1856,7 @@
                             }
                             let x = xEnd + nx * mag + xNudge;
                             let y = yEnd + ny * mag + yNudge;
-                            const rightPad = 30, leftPad = 6;
+                            const rightPad = 12, leftPad = 6;
                             const rightBound = scales.x.right - rightPad;
                             const leftBound = scales.x.left + leftPad;
                             x = Math.max(leftBound, Math.min(x, rightBound));
