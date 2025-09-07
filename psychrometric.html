@@ -1849,7 +1849,26 @@
                 data: {
                     datasets: datasets
                 },
-                plugins: [rhLabelPlugin],
+                plugins: [rhLabelPlugin, {
+                    id: 'crosshairPlugin',
+                    afterDraw(chart) {
+                        if (!window._hoverCoord) return;
+                        const { ctx, chartArea } = chart;
+                        const { x, y } = window._hoverCoord;
+                        if (x < chartArea.left || x > chartArea.right || y < chartArea.top || y > chartArea.bottom) return;
+                        ctx.save();
+                        ctx.strokeStyle = document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(x, chartArea.top);
+                        ctx.lineTo(x, chartArea.bottom);
+                        ctx.moveTo(chartArea.left, y);
+                        ctx.lineTo(chartArea.right, y);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1961,6 +1980,60 @@
                         mode: 'index'
                     }
                 }
+            });
+
+            // hover crosshair
+            canvas.addEventListener('mousemove', function(evt) {
+                const rect = canvas.getBoundingClientRect();
+                const x = evt.clientX - rect.left;
+                const y = evt.clientY - rect.top;
+                window._hoverCoord = { x, y };
+                if (window.psychrometricChartInstance) {
+                    window.psychrometricChartInstance.draw();
+                }
+            });
+            canvas.addEventListener('mouseleave', function() {
+                window._hoverCoord = null;
+                if (window.psychrometricChartInstance) {
+                    window.psychrometricChartInstance.draw();
+                }
+            });
+            // click to select point
+            canvas.addEventListener('click', function(evt) {
+                const chart = window.psychrometricChartInstance;
+                if (!chart) return;
+                const rect = canvas.getBoundingClientRect();
+                const px = evt.clientX - rect.left;
+                const py = evt.clientY - rect.top;
+                const xVal = chart.scales.x.getValueForPixel(px);
+                const yValGPerKg = chart.scales.y.getValueForPixel(py);
+                if (isNaN(xVal) || isNaN(yValGPerKg)) return;
+                const dryBulb = Math.max(-40, Math.min(65, xVal));
+                const W = Math.max(0, yValGPerKg / 1000);
+                const altitude = parseFloat(document.getElementById('altitude').value) || 0;
+                const pressure = calculateAtmosphericPressure(altitude);
+                try {
+                    const relativeHumidity = Math.max(0, Math.min(100, calculateRHFromHumidityRatio(dryBulb, W, pressure)));
+                    const dewPointTemp = calculateDewPointTemperature(W, pressure);
+                    const wetBulbTemp = calculateWetBulbTemperature(dryBulb, W, pressure);
+                    const enthalpy = calculateEnthalpy(dryBulb, W);
+                    const specificVolume = calculateSpecificVolume(dryBulb, W, pressure);
+                    const density = calculateDensity(specificVolume, W);
+                    const values = {
+                        dryBulbTemp: dryBulb,
+                        wetBulbTemp,
+                        relativeHumidity,
+                        dewPointTemp,
+                        humidityRatio: W,
+                        enthalpy,
+                        specificVolume,
+                        density
+                    };
+                    previewValues = values;
+                    displayResults(values);
+                    showFormulas(values, 'dryBulb', dryBulb, 'humidityRatio', W);
+                    drawPsychrometricChart();
+                } catch (e) {}
             });
             
             console.log('Professional psychrometric chart created successfully!');
