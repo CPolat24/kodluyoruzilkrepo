@@ -1188,24 +1188,33 @@
         }
 
         function calculateWetBulbTemperature(dryBulbTemp, humidityRatio, pressure = 101325) {
-            // Thermodynamic wet-bulb via enthalpy equality: h(Tdb,W) = h(Twb, Ws(Twb))
-            const h_air = calculateEnthalpy(dryBulbTemp, humidityRatio); // J/kg dry air
-            let low = -80.0;
-            let high = dryBulbTemp;
-            // Ensure function changes sign over bracket
+            // ASHRAE-consistent thermodynamic wet-bulb via adiabatic saturation:
+            // h(Tdb, W) = h(Twb, Ws(Twb)) - (Ws(Twb) - W) * c_w_liq * Twb
+            const CP_DA = 1006;       // J/kg·K for dry air
+            const CP_W_V = 1860;      // J/kg·K for water vapor (≈1.86 kJ/kg·K)
+            const H_FG0 = 2501000;    // J/kg latent at 0°C
+            const C_W_LIQ = 4186;     // J/kg·K for liquid water
+
+            function enthalpyMoist(T, W) {
+                return CP_DA * T + W * (H_FG0 + CP_W_V * T);
+            }
+
             function f(Twb) {
                 const Ws = saturationHumidityRatio(Twb, pressure);
-                const h_sat = calculateEnthalpy(Twb, Ws);
-                return h_air - h_sat; // zero when equal
+                const h_sat = enthalpyMoist(Twb, Ws);
+                const h_air = enthalpyMoist(dryBulbTemp, humidityRatio);
+                return h_air - (h_sat - (Ws - humidityRatio) * C_W_LIQ * Twb);
             }
+
+            let low = -60.0;
+            let high = Math.max(-50, Math.min(dryBulbTemp, 65));
             let f_low = f(low);
             let f_high = f(high);
+            // Ensure sign change; expand if needed
             if (f_low * f_high > 0) {
-                // Fallback: expand lower bound
-                low = -100.0;
-                f_low = f(low);
+                low = -80.0; f_low = f(low);
                 if (f_low * f_high > 0) {
-                    // As a last resort, return empirical approx but this should rarely happen
+                    // fallback to empirical approximation
                     const p_ws = calculateSaturationVaporPressure(dryBulbTemp);
                     const p_w = humidityRatio * pressure / (0.62198 + humidityRatio);
                     const RH = Math.max(0, Math.min(100, (p_w / p_ws) * 100));
@@ -1218,13 +1227,11 @@
             for (let i = 0; i < 60; i++) {
                 const mid = 0.5 * (low + high);
                 const f_mid = f(mid);
-                if (f_mid === 0) return mid;
+                if (Math.abs(f_mid) < 1e-3) return mid;
                 if (f_low * f_mid < 0) {
-                    high = mid;
-                    f_high = f_mid;
+                    high = mid; f_high = f_mid;
                 } else {
-                    low = mid;
-                    f_low = f_mid;
+                    low = mid; f_low = f_mid;
                 }
             }
             return 0.5 * (low + high);
