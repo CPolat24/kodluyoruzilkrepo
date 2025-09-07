@@ -1825,45 +1825,19 @@
                         if (!points || points.length === 0) return;
                         ctx.textBaseline = 'middle';
                         if (isRH) {
-                            // place at right end above the curve using perpendicular offset; fine-tune for 40..100
+                            // simpler placement: right end with slight vertical stagger, keep % in label
                             const last = points[points.length - 1];
-                            const prev = points.length > 1 ? points[points.length - 2] : last;
-                            let xEnd = scales.x.getPixelForValue(last.x);
-                            let yEnd = scales.y.getPixelForValue(last.y);
-                            const xPrev = scales.x.getPixelForValue(prev.x);
-                            const yPrev = scales.y.getPixelForValue(prev.y);
-                            let tx = xEnd - xPrev;
-                            let ty = yEnd - yPrev;
-                            if (Math.abs(tx) + Math.abs(ty) < 1e-6) { tx = 1; ty = 0; }
-                            let nx = -ty, ny = tx; // perpendicular
-                            const nlen = Math.hypot(nx, ny) || 1;
-                            nx /= nlen; ny /= nlen;
-                            if (ny > 0) { nx = -nx; ny = -ny; } // ensure up
-                            const rhVal = parseInt(ds.label.replace('%','')) || 0;
-                            const labelText = String(rhVal);
-                            let mag = 0;
-                            let xNudge = 0, yNudge = 0;
-                            if (rhVal === 20) { xNudge -= 3; }
-                            if (rhVal === 30) { xNudge += 2; }
-                            if (rhVal === 40) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 50) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 60) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 70) { xNudge += 2; yNudge -= 4; }
-                            if (rhVal === 80) { yNudge -= 4; }
-                            if (rhVal === 90) { yNudge -= 4; }
-                            if (rhVal === 100) { xNudge -= 3; yNudge -= 5; }
-                            if (![30,40,50,60,70,80,90,100].includes(rhVal)) {
-                                yNudge += (Math.floor(rhVal / 20) % 2 === 0) ? -8 : 8;
-                            }
-                            let x = xEnd + nx * mag + xNudge;
-                            let y = yEnd + ny * mag + yNudge;
-                            const rightPad = 12, leftPad = 6;
+                            let x = scales.x.getPixelForValue(last.x);
+                            let y = scales.y.getPixelForValue(last.y);
+                            const rightPad = 40;
                             const rightBound = scales.x.right - rightPad;
-                            const leftBound = scales.x.left + leftPad;
-                            x = Math.max(leftBound, Math.min(x, rightBound));
+                            x = Math.min(x, rightBound);
+                            const rhVal = parseInt(ds.label.replace('%','')) || 0;
+                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -10 : 10;
+                            y = y + yOffset;
                             ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
                             ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
-                            ctx.fillText(labelText, x, y);
+                            ctx.fillText(ds.label, x, y);
                             rhIndex++;
                         } else if (isWB) {
                             // place at left, stagger to avoid overlap with RH
