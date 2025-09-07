@@ -1597,8 +1597,8 @@
             // 1. Relative Humidity Curves (Bağıl Nem Eğrileri) - Professional red curves
             const rhValues = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
             const rhColors = [
-                '#8B0000', '#A52A2A', '#B22222', '#DC143C', '#FF0000',
-                '#FF4500', '#FF6347', '#FF7F50', '#FFA500', '#FFD700'
+                '#e11d48', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+                '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'
             ];
             
             rhValues.forEach((rh, index) => {
@@ -1801,59 +1801,49 @@
 
             const rhLabelPlugin = {
                 id: 'rhLabelPlugin',
-                afterDatasetsDraw(chart, args, pluginOptions) {
+                afterDatasetsDraw(chart) {
                     const { ctx, scales } = chart;
                     ctx.save();
                     let rhIndex = 0;
-                    let hIndex = 0;
-                    let vIndex = 0;
+                    let wbIndex = 0;
+                    const isMobile = window.innerWidth < 768;
                     chart.data.datasets.forEach(ds => {
                         if (!ds || ds.hidden) return;
                         if (!ds.label) return;
+                        const isRH = ds.label.includes('%');
+                        const isWB = ds.label.includes('°C') && !ds._isUserPoint;
+                        if (!isRH && !isWB) return;
                         const points = ds.data;
                         if (!points || points.length === 0) return;
-                        const last = points[points.length - 1];
-                        let x = scales.x.getPixelForValue(last.x);
-                        let y = scales.y.getPixelForValue(last.y);
-                        const rightPad = 46;
-                        const leftBound = scales.x.left + 6;
-                        const rightBound = scales.x.right - rightPad;
-                        x = Math.min(x, rightBound);
+                        const first = points[0];
+                        let x = scales.x.getPixelForValue(first.x);
+                        let y = scales.y.getPixelForValue(first.y);
+                        const leftPad = 10;
+                        const leftBound = scales.x.left + leftPad;
                         x = Math.max(x - 22, leftBound);
                         ctx.textBaseline = 'middle';
-                        if (ds.label.includes('%')) {
-                            // RH label
+                        if (isRH) {
                             const rhVal = parseInt(ds.label.replace('%','')) || 0;
-                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -12 : 12;
+                            const yOffset = (Math.floor(rhVal / 20) % 2 === 0) ? -12 : -18;
                             y = y + yOffset;
-                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#FF0000';
-                            ctx.font = '12px Inter, sans-serif';
+                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : (document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#111827');
+                            ctx.font = (isMobile ? '10px' : '12px') + ' Inter, sans-serif';
                             ctx.fillText(ds.label, x, y);
                             rhIndex++;
-                        } else if (ds.label.includes('kJ/kg')) {
-                            // Enthalpy label, short form: h 80
-                            const hVal = parseInt(ds.label) || 0;
-                            const yOffset = (hIndex % 3 === 0) ? -10 : (hIndex % 3 === 1 ? 0 : 10);
+                        } else if (isWB) {
+                            const yOffset = (wbIndex % 2 === 0) ? -10 : -6;
                             y = y + yOffset;
-                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#228B22';
-                            ctx.font = '11px Inter, sans-serif';
-                            ctx.fillText(`h ${hVal}`, x, y);
-                            hIndex++;
-                        } else if (ds.label.includes('m³/kg')) {
-                            // Specific volume label, short form: v 0.98
-                            const vVal = (parseFloat(ds.label) || 0).toFixed(2);
-                            const yOffset = (vIndex % 2 === 0) ? -8 : 8;
-                            y = y + yOffset;
-                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#8A2BE2';
-                            ctx.font = '11px Inter, sans-serif';
-                            ctx.fillText(`v ${vVal}`, x, y);
-                            vIndex++;
+                            ctx.fillStyle = typeof ds.borderColor === 'string' ? ds.borderColor : '#3fa9f5';
+                            ctx.font = (isMobile ? '9px' : '11px') + ' Inter, sans-serif';
+                            ctx.fillText(ds.label, x, y);
+                            wbIndex++;
                         }
                     });
                     ctx.restore();
                 }
             };
 
+            const isMobile = window.innerWidth < 768;
             window.psychrometricChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1868,7 +1858,7 @@
                             display: true,
                             text: `Psikrometrik Diyagram - Basınç: ${(pressure/1000).toFixed(1)} kPa`,
                             font: {
-                                size: 16,
+                                size: isMobile ? 12 : 16,
                                 weight: 'bold'
                             },
                             color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b'
@@ -1924,7 +1914,7 @@
                             ticks: {
                                 color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#64748b',
                                 font: {
-                                    size: 12
+                                    size: isMobile ? 10 : 12
                                 },
                                 stepSize: 5,
                                 display: true,
@@ -1940,7 +1930,7 @@
                                 text: 'Nem Oranı (g/kg)',
                                 color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#1e293b',
                                 font: {
-                                    size: 14,
+                                    size: isMobile ? 12 : 14,
                                     weight: 'bold'
                                 }
                             },
@@ -1954,7 +1944,7 @@
                             ticks: {
                                 color: document.body.classList.contains('dark-mode') ? '#f1f5f9' : '#64748b',
                                 font: {
-                                    size: 12
+                                    size: isMobile ? 10 : 12
                                 },
                                 stepSize: 5,
                                 display: true,
