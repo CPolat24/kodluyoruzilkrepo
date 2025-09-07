@@ -1638,7 +1638,8 @@
                         pointRadius: 0,
                         tension: 0.1,
                         fill: false,
-                        hidden: false
+                        hidden: false,
+                        _isRH: true
                     });
                     // track max y
                     const localMax = Math.max.apply(null, data.map(p => p.y));
@@ -1818,7 +1819,7 @@
                     chart.data.datasets.forEach(ds => {
                         if (!ds || ds.hidden) return;
                         if (!ds.label) return;
-                        const isRH = ds.label.includes('%');
+                        const isRH = !!ds._isRH;
                         const isWB = ds.label.includes('°C') && !ds._isUserPoint;
                         if (!isRH && !isWB) return;
                         const points = ds.data;
