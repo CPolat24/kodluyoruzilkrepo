@@ -1845,10 +1845,10 @@
                             if (rhVal === 40) { xNudge += 6; yNudge += -4; }
                             if (rhVal === 50) { xNudge += -6; yNudge += -4; }
                             if (rhVal === 60) { xNudge += -8; yNudge += -8; }
-                            if (rhVal === 70) { xNudge += -8; yNudge += -10; }
-                            if (rhVal === 80) { xNudge += -9; yNudge += -11; }
-                            if (rhVal === 90) { xNudge += -10; yNudge += -12; }
-                            if (rhVal === 100) { xNudge += -12; yNudge += -14; }
+                            if (rhVal === 70) { mag += 2; xNudge += -14; yNudge += -12; }
+                            if (rhVal === 80) { mag += 3; xNudge += -16; yNudge += -14; }
+                            if (rhVal === 90) { mag += 3; xNudge += -18; yNudge += -16; }
+                            if (rhVal === 100) { mag += 4; xNudge += -20; yNudge += -18; }
                             if (![40,50,60,70,80,90,100].includes(rhVal)) {
                                 yNudge += (Math.floor(rhVal / 20) % 2 === 0) ? -8 : 8;
                             }
