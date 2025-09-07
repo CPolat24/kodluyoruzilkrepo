@@ -1603,9 +1603,10 @@
             
             rhValues.forEach((rh, index) => {
                 const data = [];
-                for (let temp = 0; temp <= 50; temp += 1) {
+                for (let temp = -40; temp <= 65; temp += 1) {
                     try {
                         const humidityRatio = calculateHumidityRatioFromRH(temp, rh, pressure);
+                        // cap at saturation implicitly through formula; filter to 60 g/kg
                         if (humidityRatio > 0 && humidityRatio < 0.06) {
                             data.push({
                                 x: temp,
@@ -1637,25 +1638,27 @@
                 }
             });
             
-            // 2. Wet Bulb Temperature Lines (Yaş Termometre Eğrileri) - Blue dashed lines
-            const wetBulbValues = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45];
+            // 2. Wet-Bulb Temperature Lines (Yaş Termometre Eğrileri) using psychrometric equation
+            const wetBulbValues = [-20, -10, 0, 5, 10, 15, 20, 25, 30, 35, 40];
             wetBulbValues.forEach((wbTemp, index) => {
                 const data = [];
-                for (let temp = -10; temp <= 50; temp += 0.2) {
+                // Use p_w = p_ws(Twb) - gamma * P * (Tdb - Twb)
+                // gamma ≈ 0.00066 * (1 + 0.00115 * Twb)
+                const PkPa = pressure / 1000.0;
+                const gamma = 0.00066 * (1 + 0.00115 * wbTemp);
+                for (let temp = Math.max(wbTemp, -40); temp <= 65; temp += 0.5) {
                     try {
-                        const p_ws = calculateSaturationVaporPressure(wbTemp);
-                        const p_w = p_ws; // At saturation
-                        const humidityRatio = 0.62198 * p_w / (pressure - p_w);
-                        
-                        if (humidityRatio > 0 && humidityRatio < 0.06) {
-                            data.push({
-                                x: temp,
-                                y: humidityRatio * 1000
-                            });
+                        const p_ws_wb_kPa = calculateSaturationVaporPressure(wbTemp) / 1000.0;
+                        let p_w_kPa = p_ws_wb_kPa - gamma * PkPa * (temp - wbTemp);
+                        const p_ws_t_kPa = calculateSaturationVaporPressure(temp) / 1000.0;
+                        // clamp to [0, p_ws(Tdb)]
+                        p_w_kPa = Math.max(0, Math.min(p_w_kPa, p_ws_t_kPa - 1e-6));
+                        if (p_w_kPa <= 0) continue;
+                        const W = 0.62198 * p_w_kPa / (PkPa - p_w_kPa);
+                        if (W > 0 && W < 0.06) {
+                            data.push({ x: temp, y: W * 1000 });
                         }
-                    } catch (e) {
-                        // Skip invalid points
-                    }
+                    } catch (e) {}
                 }
                 
                 if (data.length > 0) {
@@ -1677,17 +1680,17 @@
             });
             
             // 3. Enthalpy Lines (Entalpi Eğrileri) - Green diagonal lines
-            const enthalpyValues = [60, 70, 80, 90, 100, 110, 120];
+            const enthalpyValues = [-20, 0, 20, 40, 60, 80, 100, 120, 140, 160, 180];
             enthalpyValues.forEach((enthalpy, index) => {
                 const data = [];
-                for (let temp = -10; temp <= 50; temp += 0.2) {
+                for (let temp = -40; temp <= 65; temp += 0.5) {
                     try {
                         const humidityRatio = (enthalpy - 1.006 * temp) / (2501 + 1.86 * temp);
-                        if (humidityRatio > 0 && humidityRatio < 0.06) {
-                            data.push({
-                                x: temp,
-                                y: humidityRatio * 1000
-                            });
+                        // cap against saturation at T
+                        const p_ws_t = calculateSaturationVaporPressure(temp);
+                        const W_s = 0.62198 * (p_ws_t) / (pressure - p_ws_t);
+                        if (humidityRatio > 0 && humidityRatio < 0.06 && humidityRatio <= W_s) {
+                            data.push({ x: temp, y: humidityRatio * 1000 });
                         }
                     } catch (e) {
                         // Skip invalid points
@@ -1716,14 +1719,14 @@
             const volumeValues = [0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15];
             volumeValues.forEach((volume, index) => {
                 const data = [];
-                for (let temp = -10; temp <= 50; temp += 0.2) {
+                for (let temp = -40; temp <= 65; temp += 0.5) {
                     try {
                         const humidityRatio = (1.0 / volume - 1.0) / (0.287 * (temp + 273.15) / pressure);
-                        if (humidityRatio > 0 && humidityRatio < 0.06) {
-                            data.push({
-                                x: temp,
-                                y: humidityRatio * 1000
-                            });
+                        // cap against saturation at T
+                        const p_ws_t = calculateSaturationVaporPressure(temp);
+                        const W_s = 0.62198 * (p_ws_t) / (pressure - p_ws_t);
+                        if (humidityRatio > 0 && humidityRatio < 0.06 && humidityRatio <= W_s) {
+                            data.push({ x: temp, y: humidityRatio * 1000 });
                         }
                     } catch (e) {
                         // Skip invalid points
@@ -1875,8 +1878,8 @@
                                     weight: 'bold'
                                 }
                             },
-                            min: 0,
-                            max: 50,
+                            min: -40,
+                            max: 65,
                             grid: {
                                 color: document.body.classList.contains('dark-mode') ? '#475569' : '#e2e8f0',
                                 lineWidth: 1,
@@ -1887,7 +1890,7 @@
                                 font: {
                                     size: 12
                                 },
-                                stepSize: 2,
+                                stepSize: 5,
                                 display: true,
                                 callback: function(value) {
                                     return value + '°C';
